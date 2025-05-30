@@ -6,47 +6,30 @@ This is a fullstack pet reminder application with:
 
 ---
 
-## Getting Started
+## Installation
 
-### 1. **Backend Setup**
+1. Clone the repository:
+```bash
+git clone https://github.com/vanshsingh2002/pet-remainder
+cd pet-remainder
+```
 
-1. Go to the backend directory:
-   ```bash
-   cd pet-remainder-backend
-   ```
 2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Start the backend server:
-   ```bash
-   node index.js
-   ```
-   The backend will run on [http://localhost:4000](http://localhost:4000) by default.
+```bash
+npm install
+```
 
-### 2. **Frontend Setup**
+3. Create a `.env.production` file in the root directory and configure your environment variables:
+```env
+NEXT_PUBLIC_API_BASE=https://your-backend-domain.com
+```
 
-1. Go to the frontend directory (this repo):
-   ```bash
-   cd pet-remainder
-   ```
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. (Optional) Set the API base URL for production:
-   - Create a `.env.production` file:
-     ```env
-     NEXT_PUBLIC_API_BASE=https://your-backend-domain.com
-     ```
-   - In development, the app uses `http://localhost:4000` by default.
-4. Start the frontend server:
-   ```bash
-   npm run dev
-   ```
-   The frontend will run on [http://localhost:3000](http://localhost:3000).
+## Running the Application
 
----
+To start the development server:
+```bash
+npm run dev
+```
 
 ## Features
 - Add, edit, delete, and mark reminders as done
@@ -57,17 +40,3 @@ This is a fullstack pet reminder application with:
 - PWA support (installable, works offline)
 
 ---
-
-## Deployment
-
-- **Frontend:** Deploy to Vercel, Netlify, or any Next.js-compatible host.
-- **Backend:** Deploy to Render, Railway, Heroku, or your own VPS.
-- Set `NEXT_PUBLIC_API_BASE` in your frontend environment variables to your backend's deployed URL.
-- Make sure CORS in your backend allows your frontend domain.
-
----
-
-## Learn More
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Express Documentation](https://expressjs.com/)
-- [SQLite Documentation](https://www.sqlite.org/docs.html)
