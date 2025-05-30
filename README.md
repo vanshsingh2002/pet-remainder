@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pet Reminder App
+
+This is a fullstack pet reminder application with:
+- **Frontend:** Next.js (React, PWA, offline-first, skeleton loading, modern UI)
+- **Backend:** Node.js/Express with SQLite (REST API)
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### 1. **Backend Setup**
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+1. Go to the backend directory:
+   ```bash
+   cd pet-remainder-backend
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Start the backend server:
+   ```bash
+   node index.js
+   ```
+   The backend will run on [http://localhost:4000](http://localhost:4000) by default.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. **Frontend Setup**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Go to the frontend directory (this repo):
+   ```bash
+   cd pet-remainder
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. (Optional) Set the API base URL for production:
+   - Create a `.env.production` file:
+     ```env
+     NEXT_PUBLIC_API_BASE=https://your-backend-domain.com
+     ```
+   - In development, the app uses `http://localhost:4000` by default.
+4. Start the frontend server:
+   ```bash
+   npm run dev
+   ```
+   The frontend will run on [http://localhost:3000](http://localhost:3000).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
+
+## Features
+- Add, edit, delete, and mark reminders as done
+- Filter by pet, category, and date
+- Calendar with streak tracking
+- Offline-first: works without internet, syncs when back online
+- Skeleton loading UI
+- PWA support (installable, works offline)
+
+---
+
+## Deployment
+
+- **Frontend:** Deploy to Vercel, Netlify, or any Next.js-compatible host.
+- **Backend:** Deploy to Render, Railway, Heroku, or your own VPS.
+- Set `NEXT_PUBLIC_API_BASE` in your frontend environment variables to your backend's deployed URL.
+- Make sure CORS in your backend allows your frontend domain.
+
+---
 
 ## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Next.js Documentation](https://nextjs.org/docs)
+- [Express Documentation](https://expressjs.com/)
+- [SQLite Documentation](https://www.sqlite.org/docs.html)
