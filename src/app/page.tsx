@@ -23,6 +23,7 @@ import {
 } from "date-fns";
 import { useReminders } from "./hooks/useReminders";
 import Skeleton from "./components/Skeleton";
+import OfflineIndicator from "./components/OfflineIndicator";
 
 const CALENDAR_DAYS = [
   { label: "26", date: "2024-05-26" },
@@ -38,7 +39,7 @@ export default function Home() {
   const router = useRouter();
   const [selectedPet, setSelectedPet] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("");
-  const { reminders, loading, updateReminder, deleteReminder, markAsDone } =
+  const { reminders, loading, updateReminder, deleteReminder, markAsDone, isOnline } =
     useReminders();
   const [animating, setAnimating] = useState<number[]>([]);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -408,6 +409,8 @@ export default function Home() {
         </>
       )}
 
+      {!isOnline && <OfflineIndicator />}
+      
       <button
         className="fixed bottom-6 right-6 bg-green-500 hover:bg-green-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg transition-colors z-10"
         onClick={() => router.push("/add")}

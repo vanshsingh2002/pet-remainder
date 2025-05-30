@@ -146,174 +146,165 @@ const INITIAL_REMINDERS: Reminder[] = [
 export function useReminders() {
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [offline, setOffline] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
 
-  // Helper: Save to localStorage
-  const saveToLocal = (data: Reminder[]) => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch {}
-  };
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
 
-  // Helper: Load from localStorage
-  const loadFromLocal = (): Reminder[] => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) return JSON.parse(stored);
-    } catch {}
-    return INITIAL_REMINDERS;
-  };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    setIsOnline(navigator.onLine);
 
-  // Fetch from API or fallback to localStorage/initial data
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
   useEffect(() => {
     const fetchReminders = async () => {
-      setLoading(true);
-      setError(null);
       try {
-        const res = await fetch(`${API_BASE}/reminders`);
-        if (!res.ok) throw new Error("API error");
-        const data = await res.json();
+        const response = await fetch(`${API_BASE}/reminders`);
+        if (!response.ok) throw new Error("Failed to fetch reminders");
+        const data = await response.json();
         setReminders(data);
-        saveToLocal(data);
-        setOffline(false);
-      } catch {
-        // Offline fallback
-        setOffline(true);
-        const local = loadFromLocal();
-        setReminders(local);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (error) {
+        console.error("Error fetching reminders:", error);
+        const cached = localStorage.getItem(STORAGE_KEY);
+        if (cached) {
+          setReminders(JSON.parse(cached));
+        }
       } finally {
         setLoading(false);
       }
     };
+
     fetchReminders();
   }, []);
 
-  // Auto-sync when coming back online
-  useEffect(() => {
-    const handleOnline = async () => {
-      // Try to push all local reminders to the backend
-      const localReminders = loadFromLocal();
-      try {
-        // Clear backend and re-upload all local reminders (simple one-way sync)
-        // 1. Fetch all backend reminders
-        const res = await fetch(`${API_BASE}/reminders`);
-        if (res.ok) {
-          const backendReminders = await res.json();
-          // 2. Delete all backend reminders
-          await Promise.all(
-            backendReminders.map((r: Reminder) =>
-              fetch(`${API_BASE}/reminders/${r.id}`, { method: 'DELETE' })
-            )
-          );
-        }
-        // 3. Add all local reminders to backend
-        await Promise.all(
-          localReminders.map((r) =>
-            fetch(`${API_BASE}/reminders`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ...r, id: undefined }), // Let backend assign new id
-            })
-          )
-        );
-        // 4. Fetch latest from backend
-        const res2 = await fetch(`${API_BASE}/reminders`);
-        if (res2.ok) {
-          const synced = await res2.json();
-          setReminders(synced);
-          saveToLocal(synced);
-          setOffline(false);
-        }
-      } catch {
-        setOffline(true);
-      }
-    };
-    window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
-  }, []);
+  const syncWithServer = async () => {
+    if (!isOnline) return;
 
-  // Add reminder
+    try {
+      const response = await fetch(`${API_BASE}/reminders`);
+      if (!response.ok) throw new Error("Failed to sync with server");
+      const data = await response.json();
+      setReminders(data);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (error) {
+      console.error("Error syncing with server:", error);
+    }
+  };
+
   const addReminder = async (reminder: Omit<Reminder, "id">) => {
-    if (!offline) {
+    const newReminder = { ...reminder, id: Date.now() };
+    setReminders((prev) => [...prev, newReminder]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...reminders, newReminder]));
+
+    if (isOnline) {
       try {
-        const res = await fetch(`${API_BASE}/reminders`, {
+        const response = await fetch(`${API_BASE}/reminders`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(reminder),
         });
-        if (!res.ok) throw new Error("API error");
-        const newReminder = await res.json();
-        setReminders((prev) => [...prev, newReminder]);
-        saveToLocal([...reminders, newReminder]);
-        return newReminder;
-      } catch {
-        setOffline(true);
+        if (!response.ok) throw new Error("Failed to add reminder");
+        const data = await response.json();
+        setReminders((prev) =>
+          prev.map((r) => (r.id === newReminder.id ? data : r))
+        );
+      } catch (error) {
+        console.error("Error adding reminder:", error);
       }
     }
-    // Offline fallback
-    const newReminder: Reminder = { ...reminder, id: Date.now() };
-    setReminders((prev) => [...prev, newReminder]);
-    saveToLocal([...reminders, newReminder]);
-    return newReminder;
   };
 
-  // Update reminder
   const updateReminder = async (id: number, updates: Partial<Reminder>) => {
-    if (!offline) {
+    setReminders((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
+    );
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(reminders.map((r) => (r.id === id ? { ...r, ...updates } : r)))
+    );
+
+    if (isOnline) {
       try {
-        const res = await fetch(`${API_BASE}/reminders/${id}`, {
+        const response = await fetch(`${API_BASE}/reminders/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ...reminders.find(r => r.id === id), ...updates }),
+          body: JSON.stringify(updates),
         });
-        if (!res.ok) throw new Error("API error");
-        const updated = await res.json();
-        setReminders((prev) => prev.map(r => r.id === id ? updated : r));
-        saveToLocal(reminders.map(r => r.id === id ? updated : r));
-        return updated;
-      } catch {
-        setOffline(true);
+        if (!response.ok) throw new Error("Failed to update reminder");
+      } catch (error) {
+        console.error("Error updating reminder:", error);
       }
     }
-    // Offline fallback
-    setReminders((prev) => prev.map(r => r.id === id ? { ...r, ...updates } : r));
-    saveToLocal(reminders.map(r => r.id === id ? { ...r, ...updates } : r));
   };
 
-  // Delete reminder
   const deleteReminder = async (id: number) => {
-    if (!offline) {
+    setReminders((prev) => prev.filter((r) => r.id !== id));
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(reminders.filter((r) => r.id !== id))
+    );
+
+    if (isOnline) {
       try {
-        const res = await fetch(`${API_BASE}/reminders/${id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("API error");
-        setReminders((prev) => prev.filter(r => r.id !== id));
-        saveToLocal(reminders.filter(r => r.id !== id));
-        return;
-      } catch {
-        setOffline(true);
+        const response = await fetch(`${API_BASE}/reminders/${id}`, {
+          method: "DELETE",
+        });
+        if (!response.ok) throw new Error("Failed to delete reminder");
+      } catch (error) {
+        console.error("Error deleting reminder:", error);
       }
     }
-    // Offline fallback
-    setReminders((prev) => prev.filter(r => r.id !== id));
-    saveToLocal(reminders.filter(r => r.id !== id));
   };
 
-  // Mark as done
   const markAsDone = async (id: number) => {
-    const reminder = reminders.find(r => r.id === id);
-    if (!reminder) return;
-    await updateReminder(id, { ...reminder, status: "completed" });
+    setReminders((prev) =>
+      prev.map((r) =>
+        r.id === id ? { ...r, status: "completed" as const } : r
+      )
+    );
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(
+        reminders.map((r) =>
+          r.id === id ? { ...r, status: "completed" as const } : r
+        )
+      )
+    );
+
+    if (isOnline) {
+      try {
+        const response = await fetch(`${API_BASE}/reminders/${id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "completed" }),
+        });
+        if (!response.ok) throw new Error("Failed to mark reminder as done");
+      } catch (error) {
+        console.error("Error marking reminder as done:", error);
+      }
+    }
   };
+
+  useEffect(() => {
+    if (isOnline) {
+      syncWithServer();
+    }
+  }, [isOnline]);
 
   return {
     reminders,
     loading,
-    error,
-    offline,
     addReminder,
     updateReminder,
     deleteReminder,
     markAsDone,
+    isOnline,
   };
 }
