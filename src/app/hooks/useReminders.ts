@@ -4,150 +4,32 @@ import { Reminder } from "../types/reminderTypes";
 const STORAGE_KEY = "pet-reminders";
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:4000";
 
-// Dummy data for first-time users
-const INITIAL_REMINDERS: Reminder[] = [
-  {
-    id: 1,
-    title: "Morning Walk",
-    time: "07:00",
-    slot: "Morning",
-    pet: 1,
-    category: 1,
-    frequency: "Everyday",
-    status: "pending",
-    notes: "Take Browny for a 30-minute walk",
-    startDate: new Date().toISOString().split("T")[0],
-  },
-  {
-    id: 2,
-    title: "Breakfast",
-    time: "08:00",
-    slot: "Morning",
-    pet: 1,
-    category: 1,
-    frequency: "Everyday",
-    status: "pending",
-    notes: "1 cup of dry food",
-    startDate: new Date().toISOString().split("T")[0],
-  },
-  {
-    id: 3,
-    title: "Afternoon Play",
-    time: "14:00",
-    slot: "Afternoon",
-    pet: 2,
-    category: 1,
-    frequency: "Everyday",
-    status: "pending",
-    notes: "Play with Kitty for 20 minutes",
-    startDate: new Date().toISOString().split("T")[0],
-  },
-  {
-    id: 4,
-    title: "Vet Visit",
-    time: "16:00",
-    slot: "Afternoon",
-    pet: 1,
-    category: 2,
-    frequency: "Weekly",
-    status: "pending",
-    notes: "Annual checkup for Browny",
-    startDate: new Date().toISOString().split("T")[0],
-    endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0],
-  },
-  {
-    id: 5,
-    title: "Evening Walk",
-    time: "19:00",
-    slot: "Evening",
-    pet: 1,
-    category: 1,
-    frequency: "Everyday",
-    status: "completed",
-    notes: "Take Browny for a 30-minute walk",
-    startDate: new Date().toISOString().split("T")[0],
-  },
-  {
-    id: 6,
-    title: "Dinner",
-    time: "20:00",
-    slot: "Evening",
-    pet: 2,
-    category: 1,
-    frequency: "Everyday",
-    status: "pending",
-    notes: "Wet food for Kitty",
-    startDate: new Date().toISOString().split("T")[0],
-  },
-  {
-    id: 7,
-    title: "Grooming",
-    time: "10:00",
-    slot: "Morning",
-    pet: 2,
-    category: 2,
-    frequency: "Monthly",
-    status: "pending",
-    notes: "Brush Kitty's fur",
-    startDate: new Date().toISOString().split("T")[0],
-    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0],
-  },
-  {
-    id: 8,
-    title: "Grooming",
-    time: "10:00",
-    slot: "Morning",
-    pet: 2,
-    category: 2,
-    frequency: "Monthly",
-    status: "completed",
-    notes: "Brush Kitty's fur",
-    startDate: "2025-05-29",
-    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0],
-  },
-  {
-    id: 9,
-    title: "Grooming",
-    time: "10:00",
-    slot: "Morning",
-    pet: 2,
-    category: 2,
-    frequency: "Monthly",
-    status: "pending",
-    notes: "Brush Kitty's fur",
-    startDate: "2025-05-28",
-    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0],
-  },
-  {
-    id: 10,
-    title: "Grooming",
-    time: "10:00",
-    slot: "Morning",
-    pet: 2,
-    category: 2,
-    frequency: "Monthly",
-    status: "completed",
-    notes: "Brush Kitty's fur",
-    startDate: "2025-05-27",
-    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-      .toISOString()
-      .split("T")[0],
-  },
-];
+const updateLocalStorage = (reminders: Reminder[]) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(reminders));
+  }
+};
+
+const getTimeSlot = (time: string): "Morning" | "Afternoon" | "Evening" => {
+  const hour = parseInt(time.split(":")[0]);
+  if (hour >= 12 && hour < 17) return "Afternoon";
+  if (hour >= 17) return "Evening";
+  return "Morning";
+};
 
 export function useReminders() {
-  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>(() => {
+    // Initialize from localStorage if available
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem(STORAGE_KEY);
+      return cached ? JSON.parse(cached) : [];
+    }
+    return [];
+  });
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
 
+  // Handle online/offline status
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -162,16 +44,25 @@ export function useReminders() {
     };
   }, []);
 
+  // Load reminders from API when online
   useEffect(() => {
-    const fetchReminders = async () => {
+    const loadReminders = async () => {
+      // When online, always try to fetch from the API.
+      // If offline, rely on localStorage which is handled in useState initialization.
+      if (!isOnline) {
+         setLoading(false);
+         return;
+      }
+
       try {
         const response = await fetch(`${API_BASE}/reminders`);
         if (!response.ok) throw new Error("Failed to fetch reminders");
         const data = await response.json();
         setReminders(data);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        updateLocalStorage(data);
       } catch (error) {
-        console.error("Error fetching reminders:", error);
+        console.error("Error loading reminders from API:", error);
+        // Fallback to localStorage if API fetch fails (though useState already tries this)
         const cached = localStorage.getItem(STORAGE_KEY);
         if (cached) {
           setReminders(JSON.parse(cached));
@@ -181,27 +72,19 @@ export function useReminders() {
       }
     };
 
-    fetchReminders();
-  }, []);
-
-  const syncWithServer = async () => {
-    if (!isOnline) return;
-
-    try {
-      const response = await fetch(`${API_BASE}/reminders`);
-      if (!response.ok) throw new Error("Failed to sync with server");
-      const data = await response.json();
-      setReminders(data);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    } catch (error) {
-      console.error("Error syncing with server:", error);
-    }
-  };
+    // Only load from API when online or when component mounts (to get latest data if online)
+    // The effect dependency on isOnline ensures refetch when going online.
+    loadReminders();
+  }, [isOnline]); // Depend on isOnline to refetch when connectivity changes
 
   const addReminder = async (reminder: Omit<Reminder, "id">) => {
     const newReminder = { ...reminder, id: Date.now() };
-    setReminders((prev) => [...prev, newReminder]);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...reminders, newReminder]));
+    // Optimistically update state and localStorage
+    setReminders((prev) => {
+      const updated = [...prev, newReminder];
+      updateLocalStorage(updated);
+      return updated;
+    });
 
     if (isOnline) {
       try {
@@ -210,93 +93,184 @@ export function useReminders() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(reminder),
         });
-        if (!response.ok) throw new Error("Failed to add reminder");
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+           console.error("Server error adding reminder:", response.status, response.statusText, errorData);
+          throw new Error("Failed to add reminder to API");
+        }
         const data = await response.json();
-        setReminders((prev) =>
-          prev.map((r) => (r.id === newReminder.id ? data : r))
-        );
+        // Replace optimistic reminder with the one from the server (which has the real ID)
+        setReminders((prev) => {
+          const updated = prev.map((r) => (r.id === newReminder.id ? data : r));
+           updateLocalStorage(updated);
+          return updated;
+        });
       } catch (error) {
-        console.error("Error adding reminder:", error);
+        console.error("Error adding reminder to API:", error);
+         // Revert state and localStorage if API call fails
+         setReminders((prev) => {
+             const updated = prev.filter(r => r.id !== newReminder.id); // Remove the optimistically added reminder
+             updateLocalStorage(updated);
+             return updated;
+         });
       }
     }
   };
 
   const updateReminder = async (id: number, updates: Partial<Reminder>) => {
-    setReminders((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, ...updates } : r))
-    );
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(reminders.map((r) => (r.id === id ? { ...r, ...updates } : r)))
-    );
+    const currentReminder = reminders.find((r) => r.id === id);
+    if (!currentReminder) {
+      console.error("Reminder not found:", id);
+      return;
+    }
+
+    let updatedData = { ...updates };
+    if (updates.time) {
+      updatedData = { ...updatedData, slot: getTimeSlot(updates.time) };
+    }
+
+    const updatedReminder = { ...currentReminder, ...updatedData };
+    // Optimistically update state and localStorage
+    setReminders((prev) => {
+      const updated = prev.map((r) => (r.id === id ? updatedReminder : r));
+      updateLocalStorage(updated);
+      return updated;
+    });
 
     if (isOnline) {
       try {
         const response = await fetch(`${API_BASE}/reminders/${id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(updates),
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          // Send the full updated reminder object
+          body: JSON.stringify(updatedReminder),
         });
-        if (!response.ok) throw new Error("Failed to update reminder");
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          console.error(
+            "Server error updating reminder:",
+            response.status,
+            response.statusText,
+            errorData
+          );
+          throw new Error(`Failed to update reminder: ${response.statusText}`);
+        }
+
+        // Assuming backend returns the updated reminder on success
+        const data = await response.json();
+        // Update state and localStorage with server response
+        setReminders((prev) => {
+          const updated = prev.map((r) => (r.id === id ? data : r));
+          updateLocalStorage(updated);
+          return updated;
+        });
       } catch (error) {
-        console.error("Error updating reminder:", error);
+        console.error("Error updating reminder via API:", error);
+        // Revert local state on error if API call failed
+        setReminders((prev) => {
+          const updated = prev.map((r) => (r.id === id ? currentReminder : r)); // Revert to original state
+          updateLocalStorage(updated);
+          return updated;
+        });
       }
     }
   };
 
   const deleteReminder = async (id: number) => {
-    setReminders((prev) => prev.filter((r) => r.id !== id));
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(reminders.filter((r) => r.id !== id))
-    );
+     const reminderToDelete = reminders.find(r => r.id === id);
+     if (!reminderToDelete) return;
+
+    // Optimistically update state and localStorage
+    setReminders((prev) => {
+      const updated = prev.filter((r) => r.id !== id);
+      updateLocalStorage(updated);
+      return updated;
+    });
 
     if (isOnline) {
       try {
         const response = await fetch(`${API_BASE}/reminders/${id}`, {
           method: "DELETE",
         });
-        if (!response.ok) throw new Error("Failed to delete reminder");
+        if (!response.ok) {
+             const errorData = await response.json().catch(() => null);
+             console.error("Server error deleting reminder:", response.status, response.statusText, errorData);
+            throw new Error("Failed to delete reminder from API");
+        }
+        // No state update needed here as optimistic update already happened
       } catch (error) {
-        console.error("Error deleting reminder:", error);
+        console.error("Error deleting reminder via API:", error);
+        // Revert local state on error if API call failed
+         setReminders((prev) => {
+             const updated = [...prev, reminderToDelete]; // Add the deleted reminder back
+             updateLocalStorage(updated);
+             return updated;
+         });
       }
     }
   };
 
   const markAsDone = async (id: number) => {
-    setReminders((prev) =>
-      prev.map((r) =>
-        r.id === id ? { ...r, status: "completed" as const } : r
-      )
-    );
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(
-        reminders.map((r) =>
-          r.id === id ? { ...r, status: "completed" as const } : r
-        )
-      )
-    );
+    const reminder = reminders.find((r) => r.id === id);
+    if (!reminder) {
+      console.error("Reminder not found:", id);
+      return;
+    }
+
+    const updatedReminder = { ...reminder, status: "completed" as const };
+    // Optimistically update state and localStorage
+    setReminders((prev) => {
+      const updated = prev.map((r) => (r.id === id ? updatedReminder : r));
+      updateLocalStorage(updated);
+      return updated;
+    });
 
     if (isOnline) {
       try {
         const response = await fetch(`${API_BASE}/reminders/${id}`, {
           method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "completed" }),
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          // Send the full updated reminder object
+          body: JSON.stringify(updatedReminder),
         });
-        if (!response.ok) throw new Error("Failed to mark reminder as done");
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          console.error(
+            "Server error when marking as done:",
+            response.status,
+            response.statusText,
+            errorData
+          );
+          throw new Error(`Failed to mark reminder as done: ${response.statusText}`);
+        }
+
+        // Assuming backend returns the updated reminder on success
+        const data = await response.json();
+        // Update state and localStorage with server response
+        setReminders((prev) => {
+          const updated = prev.map((r) => (r.id === id ? data : r));
+          updateLocalStorage(updated);
+          return updated;
+        });
       } catch (error) {
-        console.error("Error marking reminder as done:", error);
+        console.error("Error during markAsDone API call:", error);
+        // Revert local state on error if API call failed
+        setReminders((prev) => {
+          const updated = prev.map((r) => (r.id === id ? reminder : r)); // Revert to original state
+          updateLocalStorage(updated);
+          return updated;
+        });
       }
     }
   };
-
-  useEffect(() => {
-    if (isOnline) {
-      syncWithServer();
-    }
-  }, [isOnline]);
 
   return {
     reminders,

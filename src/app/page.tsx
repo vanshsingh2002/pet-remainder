@@ -15,25 +15,12 @@ import {
   startOfMonth,
   endOfMonth,
   getDay,
-  isSameDay,
   isBefore,
   startOfToday,
-  parseISO,
-  differenceInCalendarDays,
 } from "date-fns";
 import { useReminders } from "./hooks/useReminders";
 import Skeleton from "./components/Skeleton";
 import OfflineIndicator from "./components/OfflineIndicator";
-
-const CALENDAR_DAYS = [
-  { label: "26", date: "2024-05-26" },
-  { label: "27", date: "2024-05-27" },
-  { label: "28", date: "2024-05-28" },
-  { label: "29", date: "2024-05-29" },
-  { label: "30", date: "2024-05-30" },
-  { label: "31", date: "2024-05-31" },
-  { label: "1", date: "2024-06-01" },
-];
 
 export default function Home() {
   const router = useRouter();

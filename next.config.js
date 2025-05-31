@@ -17,6 +17,17 @@ const withPWA = require("next-pwa")({
       },
     },
     {
+      urlPattern: /^https:\/\/pet-remainder-b\.onrender\.com\/.*/,
+      handler: "CacheFirst",
+      options: {
+        cacheName: "api-cache-fallback",
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 24 * 60 * 60, // 24 hours
+        },
+      },
+    },
+    {
       urlPattern: /\.(?:eot|otf|ttc|ttf|woff|woff2|font.css)$/i,
       handler: "StaleWhileRevalidate",
       options: {
@@ -73,6 +84,7 @@ const withPWA = require("next-pwa")({
     },
   ],
 });
+
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
